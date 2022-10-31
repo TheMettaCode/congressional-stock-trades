@@ -32,7 +32,7 @@ router.get('/senate', (req, res) => {
   const senateTradesList = [];
   const senateSource = {
     name: 'Senate Stock Disclosures',
-    address: 'https://sec.report/Senate-Stock-Disclosures?sort=filed',
+    address: 'https://sec.report/Senate-Stock-Disclosures',
     base: 'https://sec.report',
     slug: 'senate',
   };
@@ -41,6 +41,7 @@ router.get('/senate', (req, res) => {
   getData(senateSource.address)
     .then(responseData => {
       const html = responseData;
+      // console.log("::" + html);
       const $ = cheerio.load(html);
 
       const senateMap = { "api": "Congressional Stock Trades by MettaCode Developers", "chamber": "senate", "retrieved": Date() };
