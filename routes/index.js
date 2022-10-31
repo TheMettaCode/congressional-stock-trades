@@ -6,71 +6,92 @@ var express = require('express');
 const app = express();
 const router = express.Router();
 
-const sources = [
-  {
+router.get('/senate', (req, res) => {
+  const senateTradesList = [];
+  const senateSource = {
     name: 'Senate Stock Disclosures',
-    address: 'https://sec.report/Senate-Stock-Disclosures',
+    address: 'https://sec.report/Senate-Stock-Disclosures?sort=filed',
     base: 'https://sec.report',
     slug: 'senate',
-  },
-]
+  };
 
-const tradesList = [];
+  console.log(senateSource);
+  axios.get(senateSource.address)
+    .then(response => {
+      const html = response.data;
+      const $ = cheerio.load(html);
 
-sources.forEach(source => {
-  //    console.log(sources)
-  if (source.slug == 'senate') {
-    console.log(sources);
+      const transactions = $('tbody').find('tr');
 
-    axios.get(source.address)
-      .then(response => {
-        const html = response.data;
-        const $ = cheerio.load(html);
+      transactions.each((index, tAction) => {
 
-        const transactions = $('tbody').find('tr');
+        const thisTradeItem = {};
 
-        transactions.each((index, tAction) => {
+        if (index % 2 == 0) {
 
-          const thisTradeItem = {};
+          thisTradeItem["filed-date"] = $(tAction).find('td').first().find('div').first().text();
+          thisTradeItem["transaction-date"] = $(tAction).find('td').first().find('div').last().text();
+          thisTradeItem["ticker"] = $(tAction).find('a:nth-child(2)').text();
+          thisTradeItem["company"] = $(tAction).find('a').first().text().trim();
+          thisTradeItem["company-url"] = ''; // senateSource.base + $(tAction).find('a').first().attr('href');
+          thisTradeItem["member"] = 'Sen. ' + $(tAction).find('.ov').find('a').text().trim();
+          thisTradeItem["owner"] = $(tAction).next().find('div').last().text();
+          thisTradeItem["filings"] = ''; // senateSource.base + $(tAction).find('.ov').find('a').attr('href');
+          thisTradeItem["disclosure-id"] = $(tAction).next().find('a').first().text();
+          thisTradeItem["disclosure-link"] = senateSource.base + $(tAction).next().find('a').first().attr('href');
+          thisTradeItem["trade-type"] = $(tAction).next().find('div').first().text();
+          thisTradeItem["trade-range"] = $(tAction).next().find('td:nth-child(2)').first().text();
 
-          if (index % 2 == 0) {
+          // console.log(thisTradeItem);
+          senateTradesList.push(thisTradeItem);
+        }
 
-            thisTradeItem["filedDate"] = $(tAction).find('td').first().find('div').first().text();
-            thisTradeItem["transactionDate"] = $(tAction).find('td').first().find('div').last().text();
-            thisTradeItem["ticker"] = $(tAction).find('a:nth-child(2)').text();
-            thisTradeItem["company"] = $(tAction).find('a').first().text().trim();
-            thisTradeItem["companyUrl"] = source.base + $(tAction).find('a').first().attr('href');
-            thisTradeItem["senator"] = $(tAction).find('.ov').find('a').text().trim();
-            thisTradeItem["owner"] = $(tAction).next().find('div').last().text();
-            thisTradeItem["filingsUrl"] = source.base + $(tAction).find('.ov').find('a').attr('href');
-            thisTradeItem["disclosureId"] = $(tAction).next().find('a').first().text();
-            thisTradeItem["disclosureLink"] = source.base + $(tAction).next().find('a').first().attr('href');
-            thisTradeItem["type"] = $(tAction).next().find('div').first().text();
-            thisTradeItem["tradeAmount"] = $(tAction).next().find('td:nth-child(2)').first().text();
-
-            // console.log(thisTradeItem);
-            tradesList.push(thisTradeItem);
-          }
-
-        });
       });
-  } else if (sources.slug == 'house') {
-    console.log('SOURCE SELECTED IS HOUSE... TBD');
-  } else {
-    console.log('NO SOURCE FOUND');
-  }
-
-});
-
-console.log('COUNT OF TRADES:' + tradesList.length);
-
-router.get('/senate', (req, res) => {
-  console.log(tradesList);
-  res.json(tradesList);
+      // console.log(senateTradesList);
+      res.json(senateTradesList);
+    });
 });
 
 router.get('/house', (req, res) => {
-  res.render('no-page', { title: 'House trades coming soon...' });
+  const houseTradesList = [];
+  const houseSource =
+  {
+    name: 'House Stock Disclosures',
+    address: 'https://house-stock-watcher-data.s3-us-west-2.amazonaws.com/data/all_transactions.json',
+    base: '',
+    slug: 'house',
+  };
+  console.log(houseSource);
+
+  axios.get(houseSource.address)
+    .then((response) => {
+      const transactions = response.data;
+      transactions.sort((a, b) => new Date(b['transaction_date']) - new Date(a['transaction_date']));
+      const originalHouseTradesList = transactions.slice(0, 200);
+      const filteredList = originalHouseTradesList.filter((value) => new Date(value['transaction_date']) <= new Date());
+
+
+      for (var item of filteredList) {
+        const thisTradeItem = {};
+        thisTradeItem["filed-date"] = item['disclosure_date'].split('/')[2] + '-' + item['disclosure_date'].split('/')[0] + '-' + item['disclosure_date'].split('/')[1];
+        thisTradeItem["transaction-date"] = item['transaction_date'];
+        thisTradeItem["ticker"] = item['ticker'];
+        thisTradeItem["company"] = item['asset_description'];
+        thisTradeItem["company-url"] = '';
+        thisTradeItem["member"] = item['representative'];
+        thisTradeItem["owner"] = item['owner'];
+        thisTradeItem["filings"] = '';
+        thisTradeItem["disclosure-id"] = '';
+        thisTradeItem["disclosure-link"] = item['ptr_link'];
+        thisTradeItem["trade-type"] = item['type'];
+        thisTradeItem["trade-range"] = item['amount'];
+
+        // console.log('^^^^^ ' + thisTradeItem['filed-date']);
+        houseTradesList.push(thisTradeItem);
+      };
+
+      res.json(houseTradesList);
+    });
 });
 
 /* GET home page. */
