@@ -8,20 +8,21 @@ const router = express.Router();
 
 async function getData(url) {
   try {
-    let res = await axios({
-      url: url,
-      method: 'get',
-      timeout: 8000,
-      headers: {
-        'Content-Type': 'application/json',
-      }
-    })
+    // let res = await axios({
+    //   url: url,
+    //   method: 'get',
+    //   timeout: 8000,
+    //   headers: {
+    //     'Content-Type': 'application/json',
+    //   }
+    // });
+    let res = await axios.get(url);
     if (res.status == 200) {
       // test for status you want, etc
-      console.log("Status: " + res.status)
+      console.log("Status: " + res.status);
     }
     // Don't forget to return something   
-    return res.data
+    return res.data;
   }
   catch (err) {
     console.error(err);
