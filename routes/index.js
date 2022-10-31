@@ -6,6 +6,13 @@ var express = require('express');
 const app = express();
 const router = express.Router();
 
+async function getData(address) {
+  try {
+    const data = await axios.get(address);
+    return data;
+  } catch (e) { console.log(e); }
+}
+
 router.get('/senate', (req, res) => {
   const senateTradesList = [];
   const senateSource = {
@@ -16,7 +23,7 @@ router.get('/senate', (req, res) => {
   };
 
   console.log(senateSource);
-  axios.get(senateSource.address)
+  getData(senateSource.address)
     .then(response => {
       const html = response.data;
       const $ = cheerio.load(html);
@@ -63,7 +70,7 @@ router.get('/house', (req, res) => {
   };
   console.log(houseSource);
 
-  axios.get(houseSource.address)
+  getData(houseSource.address)
     .then((response) => {
       const transactions = response.data;
       transactions.sort((a, b) => new Date(b['transaction_date']) - new Date(a['transaction_date']));
