@@ -3,15 +3,30 @@ var axios = require('axios');
 var cheerio = require('cheerio');
 var express = require('express');
 
-const app = express();
+// const app = express();
 const router = express.Router();
 
-//async function getData(address) {
-//  try {
-//    const data = await axios.get(address);
-//    if(){return data;}
-//  } catch (e) { console.log(e); }
-//}
+async function getData(url) {
+  try {
+    let res = await axios({
+      url: url,
+      method: 'get',
+      timeout: 8000,
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
+    if (res.status == 200) {
+      // test for status you want, etc
+      console.log(res.status)
+    }
+    // Don't forget to return something   
+    return res.data
+  }
+  catch (err) {
+    console.error(err);
+  }
+}
 
 router.get('/senate', (req, res) => {
   const senateTradesList = [];
@@ -23,10 +38,12 @@ router.get('/senate', (req, res) => {
   };
 
   console.log(senateSource);
-  axios.get(senateSource.address)
-    .then(response => {
-      const html = response.data;
+  getData(senateSource.address)
+    .then(responseData => {
+      const html = responseData;
       const $ = cheerio.load(html);
+
+      const senateMap = { "api": "Congressional Stock Trades by MettaCode Developers", "chamber": "senate", "retrieved": Date() };
 
       const transactions = $('tbody').find('tr');
 
@@ -48,6 +65,8 @@ router.get('/senate', (req, res) => {
           thisTradeItem["disclosure-link"] = senateSource.base + $(tAction).next().find('a').first().attr('href');
           thisTradeItem["trade-type"] = $(tAction).next().find('div').first().text();
           thisTradeItem["trade-range"] = $(tAction).next().find('td:nth-child(2)').first().text();
+          thisTradeItem["data-retrieved"] = Date().toString();
+          thisTradeItem["data-retrieved-by"] = "MettaCode Developers";
 
           // console.log(thisTradeItem);
           senateTradesList.push(thisTradeItem);
@@ -55,7 +74,9 @@ router.get('/senate', (req, res) => {
 
       });
       // console.log(senateTradesList);
-      res.json(senateTradesList);
+      senateMap["retreived-trade-count"] = senateTradesList.length;
+      senateMap["senate-trades"] = senateTradesList;
+      res.json(senateMap);
     });
 });
 
@@ -70,13 +91,14 @@ router.get('/house', (req, res) => {
   };
   console.log(houseSource);
 
-  axios.get(houseSource.address)
-    .then((response) => {
-      const transactions = response.data;
+  getData(houseSource.address)
+    .then((responseData) => {
+      const transactions = responseData;
       transactions.sort((a, b) => new Date(b['transaction_date']) - new Date(a['transaction_date']));
       const originalHouseTradesList = transactions.slice(0, 200);
       const filteredList = originalHouseTradesList.filter((value) => new Date(value['transaction_date']) <= new Date());
 
+      const houseMap = { "api": "Congressional Stock Trades by MettaCode Developers", "chamber": "house", "retrieved": Date() };
 
       for (var item of filteredList) {
         const thisTradeItem = {};
@@ -92,12 +114,16 @@ router.get('/house', (req, res) => {
         thisTradeItem["disclosure-link"] = item['ptr_link'];
         thisTradeItem["trade-type"] = item['type'];
         thisTradeItem["trade-range"] = item['amount'];
+        thisTradeItem["data-retrieved"] = Date().toString();
+        thisTradeItem["data-retrieved-by"] = "MettaCode Developers";
 
-        // console.log('^^^^^ ' + thisTradeItem['filed-date']);
         houseTradesList.push(thisTradeItem);
       };
 
-      res.json(houseTradesList);
+      // console.log(houseTradesList);
+      houseMap["retreived-trade-count"] = houseTradesList.length;
+      houseMap["house-trades"] = houseTradesList;
+      res.json(houseMap);
     });
 });
 
